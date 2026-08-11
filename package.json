@@ -1,10 +1,11 @@
-{
-  "name": "labdesk",
+﻿{
+  "name": "pathofox",
   "version": "1.0.0",
   "private": true,
-  "description": "Diagnostic lab report manager (Node.js + SQLite)",
+  "description": "Pathofox diagnostic lab report manager (Node.js + SQLite)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   }
 }
+

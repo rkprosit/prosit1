@@ -11,7 +11,7 @@ db.exec('PRAGMA journal_mode = WAL;');
 db.exec(`
 CREATE TABLE IF NOT EXISTS settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
-  name TEXT NOT NULL DEFAULT 'City Diagnostic Laboratory',
+  name TEXT NOT NULL DEFAULT 'Pathofox',
   phone TEXT DEFAULT '',
   email TEXT DEFAULT '',
   address TEXT DEFAULT ''
@@ -336,7 +336,7 @@ async function handle(req, res) {
   if (p === '/api/settings' && req.method === 'PUT') {
     const { name, phone, email, address } = body;
     db.prepare('UPDATE settings SET name=?, phone=?, email=?, address=? WHERE id=1')
-      .run(name || 'City Diagnostic Laboratory', phone || '', email || '', address || '');
+      .run(name || 'Pathofox', phone || '', email || '', address || '');
     return send(res, 200, db.prepare('SELECT id, name, phone, email, address FROM settings WHERE id=1').get());
   }
 
@@ -485,7 +485,7 @@ seed();
 const server = http.createServer(handle);
 server.listen(PORT, () => {
   console.log('');
-  console.log('LabDesk server running');
+  console.log('Pathofox server running');
   console.log('  Open: http://localhost:' + PORT);
   console.log('  Data file: labdesk.db  (SQLite)');
   console.log('  Demo admin: admin / admin123');

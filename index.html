@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LabDesk — Diagnostic Lab Reports</title>
+<title>Pathofox — Diagnostic Lab Reports</title>
 <style>
   :root {
     --bg: #f1f5f9;
@@ -235,7 +235,7 @@
 <body>
 <div id="authScreen">
   <div class="auth-card">
-    <div class="auth-brand"><div class="logo">+</div><h1 id="authName">LabDesk</h1></div>
+    <div class="auth-brand"><div class="logo">+</div><h1 id="authName">Pathofox</h1></div>
     <div class="auth-tabs">
       <button id="tabLogin" class="active" onclick="showAuth('login')">Sign In</button>
       <button id="tabRegister" onclick="showAuth('register')">Create Account</button>
@@ -275,7 +275,7 @@
     <div class="pw-head">
       <div class="logo">+</div>
       <h2>Choose a Subscription Plan</h2>
-      <p id="pwMsg">Your trial has ended or you need an active plan to continue using LabDesk.</p>
+      <p id="pwMsg">Your trial has ended or you need an active plan to continue using Pathofox.</p>
     </div>
     <div class="pw-plans" id="paywallList"></div>
     <div class="pw-foot">
@@ -289,7 +289,7 @@
   <aside class="sidebar">
     <div class="brand">
       <div class="logo">+</div>
-      <h1 id="labNameShort">LabDesk<small id="labTagline">Diagnostic Laboratory</small></h1>
+      <h1 id="labNameShort">Pathofox<small id="labTagline">Diagnostic Laboratory</small></h1>
     </div>
     <nav class="nav" id="nav">
       <button data-page="dashboard" class="active"><span class="ic">▦</span> Dashboard</button>
@@ -405,7 +405,7 @@
     <!-- MY PLAN -->
     <section class="page" id="page-plan">
       <div class="page-head">
-        <div><h2>My Plan</h2><p>Manage your LabDesk subscription</p></div>
+        <div><h2>My Plan</h2><p>Manage your Pathofox subscription</p></div>
       </div>
       <div class="card" id="planCurrent"></div>
       <div class="card">
@@ -770,8 +770,8 @@ function planCardHTML(plan, u) {
 function renderPaywall() {
   const u = ME;
   document.getElementById('pwMsg').textContent = u && u.subscription && u.subscription.plan === 'trial'
-    ? 'Your 14-day free trial has ended. Choose a plan to continue using LabDesk.'
-    : 'You need an active plan to use LabDesk. Choose a plan to continue.';
+    ? 'Your 14-day free trial has ended. Choose a plan to continue using Pathofox.'
+    : 'You need an active plan to use Pathofox. Choose a plan to continue.';
   document.getElementById('paywallList').innerHTML = PLANS.filter(p => p.id !== 'trial').map(p => planCardHTML(p, u)).join('');
 }
 function renderPlanPage() {
@@ -1268,7 +1268,7 @@ async function saveSettings() {
 }
 function saveSettingsUI() {
   document.getElementById('labNameShort').textContent = (DB.settings.name || 'Lab').split(' ')[0];
-  document.getElementById('authName').textContent = DB.settings.name || 'LabDesk';
+  document.getElementById('authName').textContent = DB.settings.name || 'Pathofox';
 }
 
 /* ============ INIT ============ */
