@@ -1,0 +1,4 @@
+labdesk.db
+labdesk.db-wal
+labdesk.db-shm
+node_modules/

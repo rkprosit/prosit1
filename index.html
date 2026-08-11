@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LabDesk — Diagnostic Lab Reports</title>
+<style>
+  :root {
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --brand: #0f766e;
+    --brand-dark: #115e59;
+    --accent: #0891b2;
+    --danger: #dc2626;
+    --warn: #d97706;
+    --ok: #16a34a;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(15,23,42,.08), 0 4px 16px rgba(15,23,42,.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 14px;
+  }
+  .app { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 230px; background: linear-gradient(180deg, #0f766e, #0b4f4a);
+    color: #fff; padding: 18px 12px; flex-shrink: 0;
+    display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 20px; }
+  .brand .logo {
+    width: 38px; height: 38px; border-radius: 10px; background: #fff;
+    color: var(--brand-dark); display: grid; place-items: center; font-weight: 800; font-size: 18px;
+  }
+  .brand h1 { font-size: 17px; line-height: 1.15; }
+  .brand small { font-weight: 400; opacity: .75; font-size: 11px; display: block; }
+  .nav { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+  .nav button {
+    text-align: left; padding: 11px 12px; border: 0; border-radius: 8px;
+    background: transparent; color: #e6f7f5; font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 10px; font-weight: 500;
+  }
+  .nav button:hover { background: rgba(255,255,255,.12); }
+  .nav button.active { background: #fff; color: var(--brand-dark); font-weight: 600; }
+  .nav button .ic { width: 18px; text-align: center; }
+  .sidebar .foot { margin-top: auto; font-size: 11px; opacity: .7; padding: 10px; }
+
+  /* Main */
+  .main { flex: 1; padding: 24px 28px; max-width: 1200px; margin: 0 auto; width: 100%; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 12px; flex-wrap: wrap; }
+  .page-head h2 { font-size: 22px; font-weight: 700; }
+  .page-head p { color: var(--muted); margin-top: 2px; }
+
+  /* Cards / grids */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .stat { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+  .stat .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+  .stat .v { font-size: 26px; font-weight: 700; margin-top: 4px; }
+  .stat .s { font-size: 12px; margin-top: 2px; }
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; margin-bottom: 18px; }
+  .card h3 { font-size: 15px; margin-bottom: 12px; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); background: #f8fafc; }
+  tbody tr:hover { background: #f8fafc; }
+  td .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .badge.ok { background: #dcfce7; color: #166534; }
+  .badge.hi { background: #fee2e2; color: #991b1b; }
+  .badge.lo { background: #fef9c3; color: #854d0e; }
+  .badge.gray { background: #e2e8f0; color: #475569; }
+  .badge.blue { background: #dbeafe; color: #1e40af; }
+
+  /* Buttons */
+  .btn {
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+    font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all .15s;
+  }
+  .btn:hover { background: #f8fafc; }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn.primary:hover { background: var(--brand-dark); }
+  .btn.danger { color: var(--danger); border-color: #fecaca; }
+  .btn.danger:hover { background: #fef2f2; }
+  .btn.small { padding: 5px 9px; font-size: 12px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Forms */
+  label { display: block; font-size: 12px; font-weight: 600; color: #334155; margin: 12px 0 5px; }
+  input, select, textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px;
+    font-size: 14px; font-family: inherit; background: #fff; color: var(--ink);
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid #99f6e4; border-color: var(--brand); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 14px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 14px; }
+  .search { max-width: 340px; position: relative; }
+  .search input { padding-left: 34px; }
+
+  /* Modal */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(15,23,42,.45); display: none;
+    align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 50; overflow: auto;
+  }
+  .modal-bg.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 560px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+  .modal.wide { max-width: 760px; }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+  .modal-head h3 { font-size: 16px; }
+  .modal-body { padding: 6px 20px 20px; }
+  .modal-foot { padding: 14px 20px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+  .close-x { border: 0; background: transparent; font-size: 20px; cursor: pointer; color: var(--muted); }
+
+  /* Report builder */
+  .picked-tests { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .test-pick {
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #fff;
+  }
+  .test-pick.on { border-color: var(--brand); background: #f0fdfa; }
+  .test-pick .nm { font-weight: 600; font-size: 13px; }
+  .test-pick .rg { color: var(--muted); font-size: 11px; }
+  .result-row { display: flex; gap: 8px; align-items: center; }
+  .result-row input { flex: 1; }
+  .flag { width: 22px; text-align: center; font-weight: 700; font-size: 13px; }
+  .flag.h { color: var(--danger); }
+  .flag.l { color: var(--warn); }
+  .flag.n { color: var(--ok); }
+  .hint { font-size: 12px; color: var(--muted); }
+
+  /* History list */
+  .rpt-item {
+    border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; background: #fff;
+  }
+  .rpt-item .who { font-weight: 600; }
+  .rpt-item .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+  .empty .big { font-size: 34px; margin-bottom: 6px; }
+
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+  .tabs button { border: 0; background: transparent; padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs button.active { color: var(--brand-dark); border-bottom-color: var(--brand); }
+
+  /* Auth screen */
+  #authScreen {
+    position: fixed; inset: 0; z-index: 100;
+    background: linear-gradient(135deg, #0f766e, #0b4f4a);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  body.authed #authScreen { display: none; }
+  body:not(.authed) .app { display: none; }
+  .hidden { display: none !important; }
+
+  /* Paywall */
+  #paywallScreen {
+    position: fixed; inset: 0; z-index: 90; background: #f1f5f9;
+    display: none; overflow: auto; padding: 40px 16px;
+  }
+  #paywallScreen.show { display: block; }
+  .pw-wrap { max-width: 860px; margin: 0 auto; }
+  .pw-head { text-align: center; margin-bottom: 26px; }
+  .pw-head .logo {
+    width: 46px; height: 46px; border-radius: 12px; background: var(--brand);
+    color: #fff; display: inline-grid; place-items: center; font-weight: 800; font-size: 22px; margin-bottom: 10px;
+  }
+  .pw-head h2 { font-size: 24px; }
+  .pw-head p { color: var(--muted); margin-top: 4px; }
+  .pw-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .pw-plan {
+    background: #fff; border-radius: 12px; padding: 20px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; border: 2px solid transparent;
+  }
+  .pw-plan.pop { border-color: var(--brand); }
+  .pw-plan .pn { font-weight: 700; font-size: 16px; }
+  .pw-plan .ptag { color: var(--muted); font-size: 12px; margin: 3px 0 10px; }
+  .pw-plan .pr { font-size: 24px; font-weight: 800; color: var(--brand-dark); }
+  .pw-plan .pr small { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .pw-plan ul { list-style: none; margin: 12px 0 16px; font-size: 13px; }
+  .pw-plan li { padding: 3px 0; }
+  .pw-plan li::before { content: "✓ "; color: var(--ok); font-weight: 700; }
+  .pw-plan .btn { margin-top: auto; width: 100%; justify-content: center; }
+  .pw-foot { text-align: center; margin-top: 22px; color: var(--muted); font-size: 12px; }
+  .auth-card {
+    background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  .auth-brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 18px; }
+  .auth-brand .logo {
+    width: 40px; height: 40px; border-radius: 10px; background: var(--brand);
+    color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 20px;
+  }
+  .auth-brand h1 { font-size: 20px; color: var(--brand-dark); }
+  .auth-tabs { display: flex; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+  .auth-tabs button {
+    flex: 1; background: none; border: 0; padding: 11px; font-weight: 600; font-size: 14px;
+    color: var(--muted); border-bottom: 2px solid transparent; cursor: pointer;
+  }
+  .auth-tabs button.active { color: var(--brand-dark); border-bottom-color: var(--brand); }
+  .auth-err { color: var(--danger); font-size: 12px; min-height: 16px; margin: 8px 0 4px; }
+  .auth-ok { color: var(--ok); font-size: 12px; min-height: 16px; margin: 8px 0 4px; }
+  .btn.block { width: 100%; justify-content: center; }
+  .auth-hint { text-align: center; color: var(--muted); font-size: 12px; margin-top: 12px; }
+  .side-user { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+  .side-user .av { width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.2); display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+  .logout-btn {
+    width: 100%; margin-top: 8px; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.35);
+    color: #fff; border-radius: 8px; padding: 7px; cursor: pointer; font-size: 12px; font-weight: 600;
+  }
+  .logout-btn:hover { background: rgba(255,255,255,.28); }
+
+  /* Printable area */
+  #print-area { display: none; }
+
+  @media print {
+    body { background: #fff; }
+    body * { visibility: hidden; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area { display: block; position: absolute; top: 0; left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div id="authScreen">
+  <div class="auth-card">
+    <div class="auth-brand"><div class="logo">+</div><h1 id="authName">LabDesk</h1></div>
+    <div class="auth-tabs">
+      <button id="tabLogin" class="active" onclick="showAuth('login')">Sign In</button>
+      <button id="tabRegister" onclick="showAuth('register')">Create Account</button>
+    </div>
+    <form id="loginForm" onsubmit="return doLogin(event)">
+      <label>Phone Number</label>
+      <input type="text" id="loginUser" autocomplete="username" placeholder="+91 10-digit mobile">
+      <label>Password</label>
+      <input type="password" id="loginPass" autocomplete="current-password">
+      <p class="auth-err" id="loginErr"></p>
+      <button class="btn primary block" type="submit">Sign In</button>
+      <p class="auth-hint">New users: sign in with your phone number.<br>Demo admin — user: <b>admin</b> · password: <b>admin123</b></p>
+    </form>
+    <form id="registerForm" style="display:none" onsubmit="return doRegister(event)">
+      <label>Full Name</label>
+      <input type="text" id="regName">
+      <label>Phone Number (used as Login ID) *</label>
+      <input type="text" id="regPhone" placeholder="+91 10-digit mobile">
+      <label>Lab Name</label>
+      <input type="text" id="regLabName" placeholder="e.g. Sharma Diagnostic Centre">
+      <label>Lab Phone / Mobile</label>
+      <input type="text" id="regLabPhone" placeholder="+91 10-digit mobile">
+      <label>Lab Address</label>
+      <textarea id="regLabAddr" rows="2" placeholder="Street, area, city, state, PIN"></textarea>
+      <label>Password</label>
+      <input type="password" id="regPass" autocomplete="new-password">
+      <label>Confirm Password</label>
+      <input type="password" id="regPass2">
+      <p class="auth-err" id="regErr"></p>
+      <button class="btn primary block" type="submit">Create Account</button>
+    </form>
+  </div>
+</div>
+
+<div id="paywallScreen" class="hidden">
+  <div class="pw-wrap">
+    <div class="pw-head">
+      <div class="logo">+</div>
+      <h2>Choose a Subscription Plan</h2>
+      <p id="pwMsg">Your trial has ended or you need an active plan to continue using LabDesk.</p>
+    </div>
+    <div class="pw-plans" id="paywallList"></div>
+    <div class="pw-foot">
+      Demo payment — activation is instant and not real.<br>
+      <button class="btn small" style="margin-top:8px" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">+</div>
+      <h1 id="labNameShort">LabDesk<small id="labTagline">Diagnostic Laboratory</small></h1>
+    </div>
+    <nav class="nav" id="nav">
+      <button data-page="dashboard" class="active"><span class="ic">▦</span> Dashboard</button>
+      <button data-page="patients"><span class="ic">☺</span> Patients</button>
+      <button data-page="tests"><span class="ic">⚗</span> Test Catalog</button>
+      <button data-page="report"><span class="ic">✎</span> New Report</button>
+      <button data-page="history"><span class="ic">◷</span> Report History</button>
+      <button data-page="billing"><span class="ic">$</span> Billing</button>
+      <button data-page="plan"><span class="ic">✦</span> My Plan</button>
+    </nav>
+    <div class="foot">
+      <div class="side-user"><div class="av" id="sideAvatar">U</div><span id="sideUser">—</span></div>
+      <div style="margin-top:4px" id="sidePlan">No plan</div>
+      <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+      <div style="margin-top:8px;opacity:.7">Data stored locally in this browser.</div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-head">
+        <div><h2>Dashboard</h2><p>Overview of the laboratory</p></div>
+        <button class="btn" onclick="openSettings()">⚙ Lab Settings</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Patients</div><div class="v" id="stPatients">0</div><div class="s" id="stPatientsS">—</div></div>
+        <div class="stat"><div class="k">Reports</div><div class="v" id="stReports">0</div><div class="s" id="stReportsS">—</div></div>
+        <div class="stat"><div class="k">Tests Offered</div><div class="v" id="stTests">0</div><div class="s">in catalog</div></div>
+        <div class="stat"><div class="k">Revenue</div><div class="v" id="stRevenue">$0</div><div class="s" id="stRevenueS">—</div></div>
+      </div>
+      <div class="card">
+        <h3>Recent Reports</h3>
+        <div id="dashRecent"></div>
+      </div>
+    </section>
+
+    <!-- PATIENTS -->
+    <section class="page" id="page-patients">
+      <div class="page-head">
+        <div><h2>Patients</h2><p>Manage patient records</p></div>
+        <button class="btn primary" onclick="openPatientModal()">+ Add Patient</button>
+      </div>
+      <div class="card">
+        <div class="search" style="margin-bottom:14px"><input type="text" id="patSearch" placeholder="Search by name, ID or phone…" oninput="renderPatients()"></div>
+        <table>
+          <thead><tr><th>ID</th><th>Name</th><th>Age / Gender</th><th>Phone</th><th>Reports</th><th>Actions</th></tr></thead>
+          <tbody id="patBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TEST CATALOG -->
+    <section class="page" id="page-tests">
+      <div class="page-head">
+        <div><h2>Test Catalog</h2><p>Tests with reference ranges &amp; prices</p></div>
+        <button class="btn primary" onclick="openTestModal()">+ Add Test</button>
+      </div>
+      <div class="card">
+        <div class="search" style="margin-bottom:14px"><input type="text" id="testSearch" placeholder="Search tests…" oninput="renderTests()"></div>
+        <table>
+          <thead><tr><th>Test</th><th>Category</th><th>Unit</th><th>Reference Range</th><th>Price</th><th>Actions</th></tr></thead>
+          <tbody id="testBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- NEW REPORT -->
+    <section class="page" id="page-report">
+      <div class="page-head">
+        <div><h2>Create Report</h2><p>Fill results and generate a patient report</p></div>
+      </div>
+      <div class="card">
+        <div class="grid2">
+          <div>
+            <label>Patient</label>
+            <select id="rptPatient"></select>
+          </div>
+          <div>
+            <label>Order Date</label>
+            <input type="date" id="rptDate">
+          </div>
+        </div>
+        <label style="margin-top:18px">Select Tests (click to add)</label>
+        <div class="picked-tests" id="testPickList"></div>
+        <div id="rptResults" style="margin-top:18px"></div>
+        <label>Doctor's Notes (optional)</label>
+        <textarea id="rptNotes" rows="2" placeholder="Clinical notes, remarks…"></textarea>
+        <div class="btn-row" style="margin-top:18px">
+          <button class="btn primary" onclick="saveReport()">💾 Save Report</button>
+          <button class="btn" onclick="previewReport(true)">🖨 Print / Save PDF</button>
+          <button class="btn" onclick="resetReport()">Clear</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="page" id="page-history">
+      <div class="page-head">
+        <div><h2>Report History</h2><p>Search, view and print stored reports</p></div>
+      </div>
+      <div class="card">
+        <div class="grid3" style="margin-bottom:14px">
+          <div class="search"><input type="text" id="hisSearch" placeholder="Search patient / ID…" oninput="renderHistory()"></div>
+          <div><input type="date" id="hisFrom" oninput="renderHistory()"></div>
+          <div><input type="date" id="hisTo" oninput="renderHistory()"></div>
+        </div>
+        <div id="hisList"></div>
+      </div>
+    </section>
+
+    <!-- MY PLAN -->
+    <section class="page" id="page-plan">
+      <div class="page-head">
+        <div><h2>My Plan</h2><p>Manage your LabDesk subscription</p></div>
+      </div>
+      <div class="card" id="planCurrent"></div>
+      <div class="card">
+        <h3>Plans &amp; Pricing</h3>
+        <div class="pw-plans" id="planList"></div>
+      </div>
+    </section>
+
+    <!-- BILLING -->
+    <section class="page" id="page-billing">
+      <div class="page-head">
+        <div><h2>Billing</h2><p>Invoices &amp; payments</p></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">Total Billed</div><div class="v" id="billTotal">$0</div></div>
+        <div class="stat"><div class="k">Collected</div><div class="v" id="billPaid">$0</div><div class="s" style="color:var(--ok)">paid</div></div>
+        <div class="stat"><div class="k">Outstanding</div><div class="v" id="billDue">$0</div><div class="s" style="color:var(--danger)">pending</div></div>
+      </div>
+      <div class="card">
+        <h3>Invoices</h3>
+        <table>
+          <thead><tr><th>Invoice</th><th>Patient</th><th>Date</th><th>Report</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="invBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Modals -->
+<div class="modal-bg" id="modalPatient">
+  <div class="modal">
+    <div class="modal-head"><h3 id="pmTitle">Add Patient</h3><button class="close-x" onclick="closeModal('modalPatient')">×</button></div>
+    <div class="modal-body">
+      <div class="grid2">
+        <div><label>Full Name *</label><input type="text" id="pmName"></div>
+        <div><label>Phone / Mobile (Patient ID) *</label><input type="text" id="pmPhone" placeholder="+91 10-digit mobile"></div>
+      </div>
+      <div class="grid3">
+        <div><label>Age</label><input type="number" id="pmAge" min="0"></div>
+        <div><label>Gender</label>
+          <select id="pmGender"><option value="">—</option><option>Male</option><option>Female</option><option>Other</option></select>
+        </div>
+        <div><label>Blood Group</label>
+          <select id="pmBlood"><option value="">—</option><option>A+</option><option>A−</option><option>B+</option><option>B−</option><option>AB+</option><option>AB−</option><option>O+</option><option>O−</option></select>
+        </div>
+      </div>
+      <div><label>Address</label><textarea id="pmAddr" rows="2"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modalPatient')">Cancel</button>
+      <button class="btn primary" onclick="savePatient()">Save Patient</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalTest">
+  <div class="modal">
+    <div class="modal-head"><h3 id="tmTitle">Add Test</h3><button class="close-x" onclick="closeModal('modalTest')">×</button></div>
+    <div class="modal-body">
+      <div class="grid2">
+        <div><label>Test Name *</label><input type="text" id="tmName"></div>
+        <div><label>Category</label>
+          <select id="tmCat">
+            <option>Hematology</option><option>Biochemistry</option><option>Diabetes</option>
+            <option>Lipid Profile</option><option>Thyroid</option><option>Microbiology</option><option>Others</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div><label>Unit</label><input type="text" id="tmUnit" placeholder="mg/dL, g/dL…"></div>
+        <div><label>Price (₹)</label><input type="number" id="tmPrice" min="0" step="0.01"></div>
+      </div>
+      <div class="grid4">
+        <div><label>Normal Low</label><input type="number" id="tmLow" step="any"></div>
+        <div><label>Normal High</label><input type="number" id="tmHigh" step="any"></div>
+        <div><label>Min Result</label><input type="number" id="tmMin" step="any" placeholder="optional"></div>
+        <div><label>Max Result</label><input type="number" id="tmMax" step="any" placeholder="optional"></div>
+      </div>
+      <div class="hint">Leave Low empty for “less than High” tests (e.g. cholesterol), leave High empty for “greater than Low” (e.g. HDL).</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modalTest')">Cancel</button>
+      <button class="btn primary" onclick="saveTest()">Save Test</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalView">
+  <div class="modal wide">
+    <div class="modal-head"><h3>Report Preview</h3><button class="close-x" onclick="closeModal('modalView')">×</button></div>
+    <div class="modal-body" id="viewBody"></div>
+    <div class="modal-foot">
+      <button class="btn danger" id="viewDel" onclick="deleteReport(currentReportId)">Delete</button>
+      <button class="btn" onclick="createInvoiceFromReport(currentReportId)">Create Invoice</button>
+      <button class="btn primary" onclick="previewReport(false, currentReportId)">🖨 Print / Save PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalSettings">
+  <div class="modal">
+    <div class="modal-head"><h3>Lab Settings</h3><button class="close-x" onclick="closeModal('modalSettings')">×</button></div>
+    <div class="modal-body">
+      <div><label>Laboratory Name</label><input type="text" id="setName"></div>
+      <div class="grid2">
+        <div><label>Phone / Mobile</label><input type="text" id="setPhone" placeholder="+91 …"></div>
+        <div><label>Email</label><input type="text" id="setEmail"></div>
+      </div>
+      <div><label>Address</label><textarea id="setAddr" rows="2"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modalSettings')">Cancel</button>
+      <button class="btn primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- Print target -->
+<div id="print-area"></div>
+
+<script>
+/* ============ API / STATE ============ */
+const API_BASE = '/api';
+let token = localStorage.getItem('labdesk_token') || '';
+let ME = null;
+let DB = { settings: {}, patients: [], tests: [], reports: [], invoices: [] };
+
+const PLANS = [
+  { id: 'trial',   name: 'Free Trial',   price: 0,    days: 14,       tag: '14 days free',             perks: ['Full access for 14 days', 'All features unlocked', 'No card required'] },
+  { id: 'monthly', name: 'Monthly',      price: 499,  days: 30,       tag: '₹499 / month',             perks: ['Full access for 30 days', 'All features unlocked', 'Cancel anytime'] },
+  { id: 'yearly',  name: 'Yearly',       price: 4999, days: 365,      tag: '₹4,999 / year — save 17%', perks: ['Full access for 1 year', 'All features unlocked', 'Best value'] },
+  { id: 'pro',     name: 'Lifetime Pro', price: 9999, days: Infinity, tag: 'One-time ₹9,999',          perks: ['Lifetime access', 'All features unlocked', 'Never expires'] }
+];
+
+async function api(path, opts = {}) {
+  const res = await fetch(API_BASE + path, {
+    method: opts.method || 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {})
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  let data = null;
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) {
+    const msg = (data && data.error) || ('Request failed (' + res.status + ')');
+    if (data && data.code === 'SUBSCRIPTION_EXPIRED') showPaywall();
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+const fmtMoney = n => '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const isIndianMobile = s => /^(\+91)?[- ]?[6-9]\d{9}$/.test(String(s).replace(/[\s-]/g, ''));
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const pad = (n, w) => String(n).padStart(w, '0');
+function addDays(iso, n) { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+function daysUntil(iso) { return Math.ceil((new Date(iso + 'T00:00:00') - new Date()) / 86400000); }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function patientById(id) { return DB.patients.find(p => p.id === id); }
+function testById(id) { return DB.tests.find(t => t.id === id); }
+function reportById(id) { return DB.reports.find(r => r.id === id); }
+function planById(id) { return PLANS.find(p => p.id === id); }
+function reportTests(report) {
+  return report.tests.map(rt => {
+    const t = testById(rt.testId);
+    const v = rt.result;
+    let flag = 'n';
+    if (t) {
+      if (t.low != null && v !== null && v !== '' && v !== undefined && Number(v) < t.low) flag = 'l';
+      else if (t.high != null && v !== null && v !== '' && v !== undefined && Number(v) > t.high) flag = 'h';
+    }
+    return { ...rt, test: t, flag };
+  });
+}
+function patientReports(pid) { return DB.reports.filter(r => r.patientId === pid); }
+
+/* ============ NAV ============ */
+function go(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+  if (page === 'dashboard') renderDashboard();
+  if (page === 'patients') renderPatients();
+  if (page === 'tests') renderTests();
+  if (page === 'report') initReportForm();
+  if (page === 'history') renderHistory();
+  if (page === 'billing') renderBilling();
+  if (page === 'plan') renderPlanPage();
+}
+document.getElementById('nav').addEventListener('click', e => {
+  const btn = e.target.closest('button'); if (btn) go(btn.dataset.page);
+});
+
+/* ============ MODALS ============ */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(bg => bg.addEventListener('click', e => {
+  if (e.target === bg) bg.classList.remove('open');
+}));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-bg.open').forEach(b => b.classList.remove('open')); });
+
+/* ============ SYNC ============ */
+async function syncFromServer() {
+  const d = await api('/sync');
+  DB = d || DB;
+  DB.settings = DB.settings || {};
+  DB.patients = DB.patients || [];
+  DB.tests = DB.tests || [];
+  DB.reports = DB.reports || [];
+  DB.invoices = DB.invoices || [];
+}
+async function mutate(fn) {
+  try { await fn(); }
+  catch (ex) { alert(ex.message); return false; }
+  await syncFromServer();
+  renderDashboard();
+  renderPatients();
+  renderTests();
+  renderHistory();
+  renderBilling();
+  if (document.getElementById('page-report').classList.contains('active')) initReportForm();
+  if (document.getElementById('page-plan').classList.contains('active')) renderPlanPage();
+  return true;
+}
+
+/* ============ AUTH / ACCESS ============ */
+function currentUser() { return ME; }
+function isSubscribed(u) {
+  const s = u && u.subscription;
+  if (!s) return false;
+  if (s.lifetime) return true;
+  if (s.status !== 'active') return false;
+  if (s.planEnd && daysUntil(s.planEnd) < 0) return false;
+  return true;
+}
+function showAuth(mode) {
+  document.getElementById('loginForm').style.display = mode === 'login' ? '' : 'none';
+  document.getElementById('registerForm').style.display = mode === 'register' ? '' : 'none';
+  document.getElementById('tabLogin').classList.toggle('active', mode === 'login');
+  document.getElementById('tabRegister').classList.toggle('active', mode === 'register');
+  ['loginErr', 'regErr'].forEach(id => document.getElementById(id).textContent = '');
+}
+function showLogin() {
+  document.body.classList.remove('authed');
+  document.getElementById('paywallScreen').classList.remove('show');
+  document.getElementById('authScreen').classList.remove('hidden');
+  showAuth('login');
+}
+function showPaywall() {
+  document.body.classList.remove('authed');
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('paywallScreen').classList.add('show');
+  renderPaywall();
+}
+function enterApp() {
+  document.body.classList.add('authed');
+  document.getElementById('paywallScreen').classList.remove('show');
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('sideUser').textContent = ME.name;
+  document.getElementById('sideAvatar').textContent = (ME.name[0] || 'U').toUpperCase();
+  document.getElementById('sidePlan').innerHTML = planBadgeHTML(ME);
+  renderDashboard();
+  if (document.getElementById('page-plan').classList.contains('active')) renderPlanPage();
+}
+async function afterAuth(user) {
+  ME = user;
+  try { await syncFromServer(); } catch (e) {}
+  if (isSubscribed(ME)) enterApp();
+  else showPaywall();
+}
+async function doLogin(e) {
+  e.preventDefault();
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr');
+  try {
+    const d = await api('/auth/login', { method: 'POST', body: { username: u, password: p } });
+    token = d.token;
+    localStorage.setItem('labdesk_token', token);
+    err.textContent = '';
+    document.getElementById('loginPass').value = '';
+    await afterAuth(d.user);
+  } catch (ex) { err.textContent = ex.message; }
+  return false;
+}
+async function doRegister(e) {
+  e.preventDefault();
+  const err = document.getElementById('regErr');
+  const name = document.getElementById('regName').value.trim();
+  const regPhone = document.getElementById('regPhone').value.trim();
+  const labName = document.getElementById('regLabName').value.trim();
+  const labPhone = document.getElementById('regLabPhone').value.trim();
+  const labAddr = document.getElementById('regLabAddr').value.trim();
+  const p = document.getElementById('regPass').value;
+  const p2 = document.getElementById('regPass2').value;
+  if (!name) { err.textContent = 'Please enter your full name.'; return false; }
+  if (!isIndianMobile(regPhone)) { err.textContent = 'Enter a valid 10-digit Indian mobile (e.g. 98765 43210).'; return false; }
+  if (!labName) { err.textContent = 'Please enter your laboratory name.'; return false; }
+  if (labPhone && !isIndianMobile(labPhone)) { err.textContent = 'Enter a valid lab mobile (e.g. 98765 43210).'; return false; }
+  if (p.length < 6) { err.textContent = 'Password must be at least 6 characters.'; return false; }
+  if (p !== p2) { err.textContent = 'Passwords do not match.'; return false; }
+  try {
+    const d = await api('/auth/register', { method: 'POST', body: { name, phone: regPhone, labName, labPhone, labAddress: labAddr, password: p } });
+    token = d.token;
+    localStorage.setItem('labdesk_token', token);
+    await afterAuth(d.user);
+  } catch (ex) { err.textContent = ex.message; }
+  return false;
+}
+async function doLogout() {
+  try { await api('/auth/logout', { method: 'POST' }); } catch (e) {}
+  token = '';
+  localStorage.removeItem('labdesk_token');
+  ME = null;
+  DB = { settings: {}, patients: [], tests: [], reports: [], invoices: [] };
+  document.getElementById('sideUser').textContent = '—';
+  document.getElementById('sideAvatar').textContent = 'U';
+  document.getElementById('sidePlan').innerHTML = '';
+  showLogin();
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginUser').focus();
+}
+
+function planBadgeHTML(u) {
+  const s = u && u.subscription;
+  if (!s || !isSubscribed(u)) return '<span class="badge hi">No active plan</span>';
+  const p = planById(s.plan);
+  if (s.lifetime) return '<span class="badge ok">✦ ' + p.name + ' · Lifetime</span>';
+  return '<span class="badge blue">✦ ' + p.name + ' · ' + daysUntil(s.planEnd) + 'd left</span>';
+}
+async function activatePlan(planId) {
+  const plan = planById(planId);
+  try {
+    ME = await api('/auth/plan', { method: 'POST', body: { plan: planId } });
+    alert(plan.name + ' plan activated! (demo — no real payment was taken)');
+    if (isSubscribed(ME)) enterApp(); else showPaywall();
+  } catch (ex) { alert(ex.message); }
+}
+function planCardHTML(plan, u) {
+  const isPop = plan.id === 'yearly';
+  const current = u && u.subscription && u.subscription.plan === plan.id && isSubscribed(u);
+  const btn = current
+    ? '<button class="btn" disabled>Current Plan ✓</button>'
+    : '<button class="btn primary" onclick="activatePlan(\'' + plan.id + '\')">Choose ' + plan.name + (plan.price ? ' — ' + fmtMoney(plan.price) : '') + '</button>';
+  return '<div class="pw-plan' + (isPop ? ' pop' : '') + '">' +
+    '<div class="pn">' + plan.name + '</div>' +
+    '<div class="ptag">' + plan.tag + '</div>' +
+    '<div class="pr">' + (plan.price ? fmtMoney(plan.price) : 'Free') + (plan.days !== Infinity && plan.days ? '<small> / ' + plan.days + ' days</small>' : '') + '</div>' +
+    '<ul>' + plan.perks.map(x => '<li>' + x + '</li>').join('') + '</ul>' + btn + '</div>';
+}
+function renderPaywall() {
+  const u = ME;
+  document.getElementById('pwMsg').textContent = u && u.subscription && u.subscription.plan === 'trial'
+    ? 'Your 14-day free trial has ended. Choose a plan to continue using LabDesk.'
+    : 'You need an active plan to use LabDesk. Choose a plan to continue.';
+  document.getElementById('paywallList').innerHTML = PLANS.filter(p => p.id !== 'trial').map(p => planCardHTML(p, u)).join('');
+}
+function renderPlanPage() {
+  const u = ME;
+  const cur = document.getElementById('planCurrent');
+  const s = u && u.subscription;
+  if (!s) {
+    cur.innerHTML = '<h3>No Subscription</h3><p class="hint" style="margin-top:8px">You have no plan. Choose one below to activate access.</p>';
+  } else if (s.lifetime) {
+    cur.innerHTML = '<h3>Current Plan</h3>' +
+      '<p style="margin-top:8px"><b>' + planById(s.plan).name + '</b> <span class="badge ok">Active</span></p>' +
+      '<p class="hint" style="margin-top:6px">Started ' + s.planStart + ' · Lifetime access — never expires.</p>';
+  } else {
+    const d = daysUntil(s.planEnd);
+    const active = d >= 0;
+    cur.innerHTML = '<h3>Current Plan</h3>' +
+      '<p style="margin-top:8px"><b>' + planById(s.plan).name + '</b> <span class="badge ' + (active ? 'ok' : 'hi') + '">' + (active ? 'Active' : 'Expired') + '</span></p>' +
+      '<p class="hint" style="margin-top:6px">Started ' + s.planStart + ' · Expires ' + s.planEnd + ' · ' + (active ? d + ' day(s) remaining' : 'renew below to continue') + '</p>';
+  }
+  document.getElementById('planList').innerHTML = PLANS.map(p => planCardHTML(p, u)).join('');
+}
+
+/* ============ DASHBOARD ============ */
+function renderDashboard() {
+  const p = DB.patients.length, r = DB.reports.length, t = DB.tests.length;
+  const paid = DB.invoices.filter(i => i.paid).reduce((s, i) => s + i.total, 0);
+  document.getElementById('stPatients').textContent = p;
+  document.getElementById('stReports').textContent = r;
+  document.getElementById('stTests').textContent = t;
+  document.getElementById('stRevenue').textContent = fmtMoney(paid);
+  const newP = DB.patients.filter(x => x.created && x.created.startsWith(todayISO())).length;
+  const newR = DB.reports.filter(x => x.date === todayISO()).length;
+  document.getElementById('stPatientsS').textContent = newP + ' added today';
+  document.getElementById('stReportsS').textContent = newR + ' today';
+  const recent = DB.reports.slice(0, 5);
+  const box = document.getElementById('dashRecent');
+  if (!recent.length) {
+    box.innerHTML = '<div class="empty"><div class="big">🧪</div>No reports yet.<br>Create your first report from the <b>New Report</b> tab.</div>';
+    return;
+  }
+  box.innerHTML = recent.map(rp => {
+    const pt = patientById(rp.patientId);
+    return `<div class="rpt-item">
+      <div><div class="who">${(pt ? pt.name : 'Unknown')} <span class="badge blue">${rp.number}</span></div>
+      <div class="meta">${rp.date} · ${rp.tests.length} test(s)</div></div>
+      <div class="btn-row">
+        <button class="btn small" onclick="viewReport('${rp.id}')">View</button>
+        <button class="btn small primary" onclick="previewReport(false,'${rp.id}')">Print</button>
+      </div></div>`;
+  }).join('');
+}
+
+/* ============ PATIENTS ============ */
+let editPatientId = null;
+function openPatientModal(pid) {
+  editPatientId = pid || null;
+  document.getElementById('pmTitle').textContent = pid ? 'Edit Patient' : 'Add Patient';
+  ['pmName','pmPhone','pmAge','pmGender','pmBlood','pmAddr'].forEach(id => document.getElementById(id).value = '');
+  if (pid) {
+    const p = patientById(pid);
+    document.getElementById('pmName').value = p.name;
+    document.getElementById('pmPhone').value = p.phone || '';
+    document.getElementById('pmAge').value = p.age || '';
+    document.getElementById('pmGender').value = p.gender || '';
+    document.getElementById('pmBlood').value = p.blood || '';
+    document.getElementById('pmAddr').value = p.address || '';
+  }
+  openModal('modalPatient');
+}
+async function savePatient() {
+  const name = document.getElementById('pmName').value.trim();
+  if (!name) { alert('Patient name is required'); return; }
+  const phoneRaw = document.getElementById('pmPhone').value.trim();
+  if (!phoneRaw) { alert('Phone number is required — it is used as the Patient ID.'); return; }
+  if (!isIndianMobile(phoneRaw)) { alert('Please enter a valid 10-digit Indian mobile number (e.g. 98765 43210).'); return; }
+  const data = {
+    name, phone: phoneRaw,
+    age: document.getElementById('pmAge').value,
+    gender: document.getElementById('pmGender').value,
+    blood: document.getElementById('pmBlood').value,
+    address: document.getElementById('pmAddr').value.trim()
+  };
+  const ok = await mutate(() => editPatientId
+    ? api('/patients/' + editPatientId, { method: 'PUT', body: data })
+    : api('/patients', { method: 'POST', body: data }));
+  if (ok) closeModal('modalPatient');
+}
+function deletePatient(pid) {
+  const p = patientById(pid);
+  if (patientReports(pid).length) { alert('This patient has reports. Delete those reports first.'); return; }
+  if (!confirm('Delete patient ' + p.name + '?')) return;
+  mutate(() => api('/patients/' + pid, { method: 'DELETE' }));
+}
+function renderPatients() {
+  const q = document.getElementById('patSearch').value.trim().toLowerCase();
+  const list = DB.patients.filter(p =>
+    !q || p.name.toLowerCase().includes(q) || p.number.toLowerCase().includes(q) ||
+    (p.phone || '').toLowerCase().includes(q)
+  ).sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+  const body = document.getElementById('patBody');
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="6"><div class="empty"><div class="big">☺</div>No patients found.</div></td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(p => {
+    const n = patientReports(p.id).length;
+    return `<tr>
+      <td><b>${p.number}</b></td>
+      <td><b>${esc(p.name)}</b><br><span class="hint">${p.blood ? 'Blood: ' + p.blood : ''}</span></td>
+      <td>${p.age ? p.age + ' yrs' : '—'} / ${p.gender || '—'}</td>
+      <td>${p.phone || '—'}</td>
+      <td><span class="badge ${n ? 'blue' : 'gray'}">${n} report(s)</span></td>
+      <td><div class="btn-row">
+        <button class="btn small" onclick="openPatientModal('${p.id}')">Edit</button>
+        <button class="btn small danger" onclick="deletePatient('${p.id}')">Del</button>
+      </div></td></tr>`;
+  }).join('');
+}
+
+/* ============ TEST CATALOG ============ */
+let editTestId = null;
+function openTestModal(tid) {
+  editTestId = tid || null;
+  document.getElementById('tmTitle').textContent = tid ? 'Edit Test' : 'Add Test';
+  ['tmName','tmUnit','tmPrice','tmLow','tmHigh','tmMin','tmMax'].forEach(id => document.getElementById(id).value = '');
+  if (tid) {
+    const t = testById(tid);
+    document.getElementById('tmName').value = t.name;
+    document.getElementById('tmCat').value = t.category;
+    document.getElementById('tmUnit').value = t.unit || '';
+    document.getElementById('tmPrice').value = t.price || '';
+    document.getElementById('tmLow').value = t.low == null ? '' : t.low;
+    document.getElementById('tmHigh').value = t.high == null ? '' : t.high;
+    document.getElementById('tmMin').value = t.min == null ? '' : t.min;
+    document.getElementById('tmMax').value = t.max == null ? '' : t.max;
+  }
+  openModal('modalTest');
+}
+async function saveTest() {
+  const name = document.getElementById('tmName').value.trim();
+  if (!name) { alert('Test name is required'); return; }
+  const n = x => { const v = document.getElementById(x).value; return v === '' ? null : Number(v); };
+  const data = {
+    name,
+    category: document.getElementById('tmCat').value,
+    unit: document.getElementById('tmUnit').value.trim(),
+    price: n('tmPrice') || 0,
+    low: n('tmLow'),
+    high: n('tmHigh'),
+    min: n('tmMin'),
+    max: n('tmMax')
+  };
+  const ok = await mutate(() => editTestId
+    ? api('/tests/' + editTestId, { method: 'PUT', body: data })
+    : api('/tests', { method: 'POST', body: data }));
+  if (ok) closeModal('modalTest');
+}
+function deleteTest(tid) {
+  const t = testById(tid);
+  if (!confirm('Delete test "' + t.name + '"?')) return;
+  mutate(() => api('/tests/' + tid, { method: 'DELETE' }));
+}
+function refRange(t) {
+  if (t.low != null && t.high != null) return t.low + ' – ' + t.high;
+  if (t.low != null) return '> ' + t.low;
+  if (t.high != null) return '< ' + t.high;
+  return '—';
+}
+function renderTests() {
+  const q = document.getElementById('testSearch').value.trim().toLowerCase();
+  const list = DB.tests.filter(t => !q || t.name.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
+  const body = document.getElementById('testBody');
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="6"><div class="empty"><div class="big">⚗</div>No tests found.</div></td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(t => `<tr>
+    <td><b>${esc(t.name)}</b></td>
+    <td><span class="badge gray">${t.category}</span></td>
+    <td>${t.unit || '—'}</td>
+    <td>${refRange(t)}</td>
+    <td>${fmtMoney(t.price)}</td>
+    <td><div class="btn-row">
+      <button class="btn small" onclick="openTestModal('${t.id}')">Edit</button>
+      <button class="btn small danger" onclick="deleteTest('${t.id}')">Del</button>
+    </div></td></tr>`).join('');
+}
+
+/* ============ NEW REPORT ============ */
+let pickedTests = new Set();
+function initReportForm() {
+  const sel = document.getElementById('rptPatient');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Select patient —</option>' +
+    DB.patients.map(p => `<option value="${p.id}">${p.number} · ${esc(p.name)}</option>`).join('');
+  sel.value = prev && patientById(prev) ? prev : '';
+  document.getElementById('rptDate').value = todayISO();
+  pickedTests.clear();
+  renderTestPicks();
+  renderResults();
+}
+function togglePick(tid) {
+  if (pickedTests.has(tid)) pickedTests.delete(tid);
+  else pickedTests.add(tid);
+  renderTestPicks();
+  renderResults();
+}
+function renderTestPicks() {
+  document.getElementById('testPickList').innerHTML = DB.tests.map(t =>
+    `<div class="test-pick ${pickedTests.has(String(t.id)) ? 'on' : ''}" onclick="togglePick('${t.id}')">
+      <div><div class="nm">${esc(t.name)}</div><div class="rg">${refRange(t)} ${t.unit || ''} · ${fmtMoney(t.price)}</div></div>
+      <div>${pickedTests.has(String(t.id)) ? '✓' : '+'}</div>
+    </div>`).join('');
+}
+function renderResults() {
+  const box = document.getElementById('rptResults');
+  const ids = [...pickedTests];
+  if (!ids.length) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="hint" style="margin-bottom:8px"><b>Enter results</b> — out-of-range values are flagged automatically:</div>' +
+    ids.map(id => {
+      const t = testById(id);
+      if (!t) return '';
+      return `<div style="margin-bottom:8px"><label style="margin:0 0 4px">${esc(t.name)}
+        <span class="hint"> (normal ${refRange(t)}${t.unit ? ' ' + t.unit : ''})</span></label>
+        <div class="result-row">
+          <input type="number" step="any" id="res_${id}" placeholder="Result value">
+          <span class="flag n" id="flag_${id}">·</span>
+        </div></div>`;
+    }).join('');
+  ids.forEach(id => {
+    const el = document.getElementById('res_' + id);
+    if (el) el.addEventListener('input', () => liveFlag(id));
+  });
+}
+function liveFlag(id) {
+  const t = testById(id);
+  const v = document.getElementById('res_' + id).value;
+  const f = document.getElementById('flag_' + id);
+  if (!t) return;
+  if (v === '') { f.textContent = '·'; f.className = 'flag n'; return; }
+  const n = Number(v);
+  let flag = 'n', txt = 'N';
+  if (t.low != null && n < t.low) { flag = 'l'; txt = 'L'; }
+  else if (t.high != null && n > t.high) { flag = 'h'; txt = 'H'; }
+  f.textContent = txt; f.className = 'flag ' + flag;
+}
+function collectResults() {
+  const out = [];
+  for (const id of pickedTests) {
+    const input = document.getElementById('res_' + id);
+    if (!input || input.value === '') { alert('Please enter a result for every selected test.'); return null; }
+    out.push({ testId: String(id), result: Number(input.value) });
+  }
+  return out;
+}
+async function saveReport() {
+  const pid = document.getElementById('rptPatient').value;
+  if (!pid) { alert('Please select a patient.'); return; }
+  if (!pickedTests.size) { alert('Please select at least one test.'); return; }
+  const results = collectResults(); if (!results) return;
+  try {
+    const rp = await api('/reports', { method: 'POST', body: {
+      patientId: pid,
+      date: document.getElementById('rptDate').value || todayISO(),
+      notes: document.getElementById('rptNotes').value.trim(),
+      tests: results
+    }});
+    alert('Report ' + rp.number + ' saved.');
+    resetReport();
+    await syncFromServer();
+    renderDashboard();
+  } catch (ex) { alert(ex.message); }
+}
+function resetReport() {
+  document.getElementById('rptPatient').value = '';
+  document.getElementById('rptDate').value = todayISO();
+  document.getElementById('rptNotes').value = '';
+  pickedTests.clear();
+  renderTestPicks(); renderResults();
+}
+
+/* ============ REPORT VIEW / PRINT ============ */
+let currentReportId = null;
+function viewReport(id) {
+  currentReportId = id;
+  document.getElementById('viewBody').innerHTML = reportHTML(id);
+  document.getElementById('viewDel').style.display = 'inline-flex';
+  openModal('modalView');
+}
+function reportHTML(rp) {
+  if (typeof rp === 'string') rp = reportById(rp);
+  const pt = patientById(rp.patientId);
+  const rows = reportTests(rp);
+  const abnormal = rows.filter(r => r.flag !== 'n').length;
+  const header = `
+    <div style="text-align:center;border-bottom:2px solid var(--brand);padding-bottom:10px">
+      <h2 style="color:var(--brand-dark)">${esc(DB.settings.name || 'Diagnostic Laboratory')}</h2>
+      <div class="hint">${esc(DB.settings.address || '')}${DB.settings.phone ? ' · ' + esc(DB.settings.phone) : ''}</div>
+      <h3 style="margin-top:6px">Pathology Report</h3>
+    </div>`;
+  const info = `
+    <div class="grid4" style="margin-top:14px">
+      <div><b>Patient</b><br>${esc(pt.name)}</div>
+      <div><b>Report No.</b><br>${rp.number}</div>
+      <div><b>Patient ID</b><br>${pt.number}</div>
+      <div><b>Date</b><br>${rp.date}</div>
+    </div>
+    <div class="grid4" style="margin-top:8px">
+      <div>${pt.age ? pt.age + ' yrs' : ''}${pt.gender ? ' / ' + pt.gender : ''}</div>
+      <div>${pt.blood ? 'Blood: ' + pt.blood : ''}</div>
+      <div>${pt.phone || ''}</div>
+      <div></div>
+    </div>`;
+  const table = `
+    <table style="margin-top:14px">
+      <thead><tr><th>Test</th><th>Result</th><th>Unit</th><th>Ref. Range</th><th>Flag</th></tr></thead>
+      <tbody>${rows.map(r => {
+        const nm = r.test ? r.test.name : '(removed test)';
+        const un = r.test ? (r.test.unit || '—') : '—';
+        const rr = r.test ? refRange(r.test) : '—';
+        const flagBadge = r.flag === 'h' ? '<span class="badge hi">High</span>' :
+                          r.flag === 'l' ? '<span class="badge lo">Low</span>' :
+                          '<span class="badge ok">Normal</span>';
+        return `<tr>
+          <td><b>${esc(nm)}</b></td>
+          <td><b>${r.result}</b></td>
+          <td>${un}</td>
+          <td>${rr}</td>
+          <td>${flagBadge}</td></tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  const notes = rp.notes ? `<div style="margin-top:14px"><b>Doctor's Notes:</b> ${esc(rp.notes)}</div>` : '';
+  const sig = `
+    <div class="grid2" style="margin-top:36px;text-align:center">
+      <div>——————————<br><span class="hint">Tested By</span></div>
+      <div>——————————<br><span class="hint">Pathologist / Authorized Signatory</span></div>
+    </div>`;
+  const summary = abnormal ? `<div class="hint" style="margin-top:10px">${abnormal} parameter(s) outside reference range.</div>` : '';
+  return header + info + table + summary + notes + sig;
+}
+function previewReport(unsaved, id) {
+  if (unsaved) {
+    const pid = document.getElementById('rptPatient').value;
+    const pt = patientById(pid);
+    if (!pt) { alert('Please select a patient.'); return; }
+    if (!pickedTests.size) { alert('Select at least one test.'); return; }
+    const results = collectResults(); if (!results) return;
+    const temp = {
+      number: 'RPT' + pad(DB.reports.length + 1, 4),
+      patientId: pid,
+      date: document.getElementById('rptDate').value || todayISO(),
+      tests: results,
+      notes: document.getElementById('rptNotes').value.trim()
+    };
+    doPrint(temp);
+  } else if (id) {
+    doPrint(reportById(id));
+  }
+}
+function doPrint(rp) {
+  document.getElementById('print-area').innerHTML = reportHTML(rp);
+  setTimeout(() => window.print(), 50);
+}
+async function deleteReport(id) {
+  if (!confirm('Delete this report permanently?')) return;
+  try { await api('/reports/' + id, { method: 'DELETE' }); } catch (ex) { alert(ex.message); }
+  closeModal('modalView');
+  await syncFromServer();
+  renderHistory(); renderDashboard(); renderBilling();
+  if (document.getElementById('page-report').classList.contains('active')) initReportForm();
+}
+
+/* ============ HISTORY ============ */
+function renderHistory() {
+  const q = document.getElementById('hisSearch').value.trim().toLowerCase();
+  const from = document.getElementById('hisFrom').value;
+  const to = document.getElementById('hisTo').value;
+  let list = DB.reports.slice();
+  if (q) list = list.filter(r => {
+    const pt = patientById(r.patientId);
+    return (pt && (pt.name.toLowerCase().includes(q) || pt.number.toLowerCase().includes(q))) ||
+           r.number.toLowerCase().includes(q);
+  });
+  if (from) list = list.filter(r => r.date >= from);
+  if (to) list = list.filter(r => r.date <= to);
+  const box = document.getElementById('hisList');
+  if (!list.length) {
+    box.innerHTML = '<div class="empty"><div class="big">◷</div>No reports found.</div>';
+    return;
+  }
+  box.innerHTML = list.map(rp => {
+    const pt = patientById(rp.patientId);
+    return `<div class="rpt-item">
+      <div><div class="who">${pt ? esc(pt.name) : 'Unknown'} <span class="badge blue">${rp.number}</span></div>
+      <div class="meta">${rp.date} · ${rp.tests.length} test(s)${rp.notes ? ' · 📝 note' : ''}</div></div>
+      <div class="btn-row">
+        <button class="btn small" onclick="viewReport('${rp.id}')">View</button>
+        <button class="btn small primary" onclick="previewReport(false,'${rp.id}')">Print</button>
+      </div></div>`;
+  }).join('');
+}
+
+/* ============ BILLING ============ */
+async function createInvoiceFromReport(rid) {
+  try {
+    const inv = await api('/invoices', { method: 'POST', body: { reportId: rid } });
+    alert('Invoice ' + inv.number + ' created: ' + fmtMoney(inv.total));
+    await syncFromServer();
+    renderBilling();
+    closeModal('modalView');
+  } catch (ex) { alert(ex.message); }
+}
+async function togglePaid(iid) {
+  const inv = DB.invoices.find(i => i.id === iid);
+  if (!inv) return;
+  if (!confirm(inv.paid ? 'Mark this invoice as unpaid?' : 'Mark this invoice as paid?')) return;
+  try { await api('/invoices/' + iid, { method: 'PATCH', body: { paid: !inv.paid } }); }
+  catch (ex) { alert(ex.message); }
+  await syncFromServer();
+  renderBilling();
+}
+function printInvoice(iid) {
+  const inv = DB.invoices.find(i => i.id === iid);
+  const pt = patientById(inv.patientId);
+  const html = `
+    <div style="text-align:center;border-bottom:2px solid var(--brand);padding-bottom:10px">
+      <h2 style="color:var(--brand-dark)">${esc(DB.settings.name)}</h2>
+      <div class="hint">${esc(DB.settings.address || '')} · ${esc(DB.settings.phone || '')}</div>
+      <h3 style="margin-top:6px">Tax Invoice</h3>
+    </div>
+    <div class="grid4" style="margin-top:14px">
+      <div><b>Invoice No.</b><br>${inv.number}</div>
+      <div><b>Date</b><br>${inv.date}</div>
+      <div><b>Patient</b><br>${pt ? esc(pt.name) : 'Unknown'}</div>
+      <div><b>Patient ID</b><br>${pt ? pt.number : ''}</div>
+    </div>
+    <table style="margin-top:14px">
+      <thead><tr><th>Test</th><th>Amount</th></tr></thead>
+      <tbody>${inv.items.map(i => `<tr><td>${esc(i.name)}</td><td>${fmtMoney(i.price)}</td></tr>`).join('')}
+      <tr><td><b>Total</b></td><td><b>${fmtMoney(inv.total)}</b></td></tr></tbody>
+    </table>
+    <div style="margin-top:12px">Status: <b>${inv.paid ? 'PAID' : 'PENDING'}</b></div>
+    <div style="margin-top:30px;text-align:center">———————<br><span class="hint">Authorized Signatory</span></div>`;
+  document.getElementById('print-area').innerHTML = html;
+  setTimeout(() => window.print(), 50);
+}
+function renderBilling() {
+  const total = DB.invoices.reduce((s, i) => s + i.total, 0);
+  const paid = DB.invoices.filter(i => i.paid).reduce((s, i) => s + i.total, 0);
+  document.getElementById('billTotal').textContent = fmtMoney(total);
+  document.getElementById('billPaid').textContent = fmtMoney(paid);
+  document.getElementById('billDue').textContent = fmtMoney(total - paid);
+  const body = document.getElementById('invBody');
+  if (!DB.invoices.length) {
+    body.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="big">$</div>No invoices yet. Create one from a saved report (Report History → View → Create Invoice).</div></td></tr>';
+    return;
+  }
+  body.innerHTML = DB.invoices.slice().map(inv => {
+    const pt = patientById(inv.patientId);
+    const rp = reportById(inv.reportId);
+    return `<tr>
+      <td><b>${inv.number}</b></td>
+      <td>${pt ? esc(pt.name) : 'Unknown'}</td>
+      <td>${inv.date}</td>
+      <td><span class="badge gray">${rp ? rp.number : '—'}</span></td>
+      <td><b>${fmtMoney(inv.total)}</b></td>
+      <td><span class="badge ${inv.paid ? 'ok' : 'hi'}">${inv.paid ? 'Paid' : 'Pending'}</span></td>
+      <td><div class="btn-row">
+        <button class="btn small" onclick="togglePaid('${inv.id}')">${inv.paid ? 'Unmark' : 'Mark Paid'}</button>
+        <button class="btn small primary" onclick="printInvoice('${inv.id}')">Print</button>
+      </div></td></tr>`;
+  }).join('');
+}
+
+/* ============ SETTINGS ============ */
+function openSettings() {
+  document.getElementById('setName').value = DB.settings.name || '';
+  document.getElementById('setPhone').value = DB.settings.phone || '';
+  document.getElementById('setEmail').value = DB.settings.email || '';
+  document.getElementById('setAddr').value = DB.settings.address || '';
+  openModal('modalSettings');
+}
+async function saveSettings() {
+  const s = {
+    name: document.getElementById('setName').value.trim(),
+    phone: document.getElementById('setPhone').value.trim(),
+    email: document.getElementById('setEmail').value.trim(),
+    address: document.getElementById('setAddr').value.trim()
+  };
+  try { await api('/settings', { method: 'PUT', body: s }); } catch (ex) { alert(ex.message); }
+  await syncFromServer();
+  saveSettingsUI();
+  closeModal('modalSettings');
+}
+function saveSettingsUI() {
+  document.getElementById('labNameShort').textContent = (DB.settings.name || 'Lab').split(' ')[0];
+  document.getElementById('authName').textContent = DB.settings.name || 'LabDesk';
+}
+
+/* ============ INIT ============ */
+(async function init() {
+  const t = localStorage.getItem('labdesk_token');
+  if (!t) { showLogin(); return; }
+  token = t;
+  try {
+    ME = await api('/auth/me');
+  } catch (e) {
+    token = '';
+    localStorage.removeItem('labdesk_token');
+    showLogin();
+    return;
+  }
+  try {
+    await syncFromServer();
+    saveSettingsUI();
+    if (isSubscribed(ME)) enterApp();
+    else showPaywall();
+  } catch (e) { /* 402 → showPaywall already invoked */ }
+})();
+
+</script>
+</body>
+</html>
