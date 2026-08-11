@@ -141,11 +141,11 @@ function seed() {
   if (db.prepare('SELECT COUNT(*) AS c FROM users').get().c === 0) {
     db.prepare(`INSERT INTO users (username, phone, name, lab_name, lab_phone, lab_address, pass_hash, created, plan, plan_status, plan_start, plan_end, lifetime)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-      .run('admin', '', 'Administrator', 'City Diagnostic Laboratory', '', '', hashPass('admin123'), todayISO(), 'pro', 'active', todayISO(), null, 1);
+      .run('admin', '', 'Administrator', 'Pathofox', '', '', hashPass('admin123'), todayISO(), 'pro', 'active', todayISO(), null, 1);
   }
   if (db.prepare('SELECT COUNT(*) AS c FROM settings').get().c === 0) {
     db.prepare('INSERT INTO settings (id, name, phone, email, address) VALUES (1,?,?,?,?)')
-      .run('City Diagnostic Laboratory', '+91 98765 43210', 'reports@citylab.in', '12, MG Road, Near City Hospital, Mumbai, Maharashtra 400001');
+      .run('Pathofox', '+91 98765 43210', 'reports@pathofox.in', '12, MG Road, Near City Hospital, Mumbai, Maharashtra 400001');
   }
   if (db.prepare('SELECT COUNT(*) AS c FROM tests').get().c === 0) {
     const st = db.prepare('INSERT INTO tests (id, name, category, unit, low, high, min, max, price) VALUES (?,?,?,?,?,?,?,?,?)');
