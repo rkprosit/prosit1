@@ -5,7 +5,7 @@
   "description": "Pathofox diagnostic lab report manager (Node.js + SQLite / Turso)",
   "main": "server.js",
   "engines": {
-    "node": ">=22"
+    "node": "22.x"
   },
   "scripts": {
     "start": "node server.js"
