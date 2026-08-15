@@ -1,6 +1,7 @@
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const PORT = process.env.PORT || 3000;
@@ -31,7 +32,22 @@ function makeDb() {
     };
   }
   const { DatabaseSync } = require('node:sqlite');
-  const sqlite = new DatabaseSync(path.join(__dirname, 'labdesk.db'));
+  const isServerless = !!process.env.VERCEL;
+  const dbPath = isServerless
+    ? path.join(os.tmpdir(), 'labdesk.db')
+    : path.join(__dirname, 'labdesk.db');
+  let sqlite;
+  try {
+    sqlite = new DatabaseSync(dbPath);
+  } catch (e) {
+    if (isServerless) {
+      throw new Error('TURSO_URL is not configured. Add TURSO_URL and TURSO_AUTH_TOKEN to your Vercel project env vars (the local SQLite file is not writable on Vercel).');
+    }
+    throw e;
+  }
+  if (isServerless) {
+    console.warn('[pathofox] WARNING: running on Vercel without TURSO_URL — using ephemeral DB at ' + dbPath + '. Data will NOT persist. Set TURSO_URL + TURSO_AUTH_TOKEN.');
+  }
   sqlite.exec('PRAGMA journal_mode = WAL;');
   return {
     async exec(sql) { sqlite.exec(sql); },
