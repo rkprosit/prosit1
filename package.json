@@ -1,11 +1,16 @@
-﻿{
+{
   "name": "pathofox",
   "version": "1.0.0",
   "private": true,
-  "description": "Pathofox diagnostic lab report manager (Node.js + SQLite)",
+  "description": "Pathofox diagnostic lab report manager (Node.js + SQLite / Turso)",
   "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node server.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.4"
   }
 }
-

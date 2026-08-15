@@ -498,9 +498,12 @@
   <div class="modal wide">
     <div class="modal-head"><h3>Report Preview</h3><button class="close-x" onclick="closeModal('modalView')">×</button></div>
     <div class="modal-body" id="viewBody"></div>
+    <div id="viewStatus" style="padding:0 20px"></div>
     <div class="modal-foot">
       <button class="btn danger" id="viewDel" onclick="deleteReport(currentReportId)">Delete</button>
+      <button class="btn" onclick="downloadReportPdf(currentReportId)">⬇ Download PDF</button>
       <button class="btn" onclick="createInvoiceFromReport(currentReportId)">Create Invoice</button>
+      <button class="btn primary" onclick="sendReportToPatient(currentReportId)">📤 Send to Patient</button>
       <button class="btn primary" onclick="previewReport(false, currentReportId)">🖨 Print / Save PDF</button>
     </div>
   </div>
@@ -516,6 +519,11 @@
         <div><label>Email</label><input type="text" id="setEmail"></div>
       </div>
       <div><label>Address</label><textarea id="setAddr" rows="2"></textarea></div>
+      <div class="hint" style="margin-top:14px"><b>SMS Gateway (optional)</b> — leave API key empty to simulate sending.</div>
+      <div class="grid2">
+        <div><label>SMS API Key</label><input type="text" id="setSmsKey" placeholder="MSG91 authkey"></div>
+        <div><label>SMS Sender ID</label><input type="text" id="setSmsSender" placeholder="PATHOFOX"></div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('modalSettings')">Cancel</button>
@@ -532,13 +540,12 @@
 const API_BASE = '/api';
 let token = localStorage.getItem('labdesk_token') || '';
 let ME = null;
-let DB = { settings: {}, patients: [], tests: [], reports: [], invoices: [] };
+let DB = { settings: {}, patients: [], tests: [], reports: [], invoices: [], deliveries: [] };
 
 const PLANS = [
-  { id: 'trial',   name: 'Free Trial',   price: 0,    days: 14,       tag: '14 days free',             perks: ['Full access for 14 days', 'All features unlocked', 'No card required'] },
+  { id: 'trial',   name: 'Free Trial',   price: 0,    days: 3,        tag: '3 days free',             perks: ['Full access for 3 days', 'All features unlocked', 'No card required'] },
   { id: 'monthly', name: 'Monthly',      price: 499,  days: 30,       tag: '₹499 / month',             perks: ['Full access for 30 days', 'All features unlocked', 'Cancel anytime'] },
-  { id: 'yearly',  name: 'Yearly',       price: 4999, days: 365,      tag: '₹4,999 / year — save 17%', perks: ['Full access for 1 year', 'All features unlocked', 'Best value'] },
-  { id: 'pro',     name: 'Lifetime Pro', price: 9999, days: Infinity, tag: 'One-time ₹9,999',          perks: ['Lifetime access', 'All features unlocked', 'Never expires'] }
+  { id: 'yearly',  name: 'Yearly',       price: 4999, days: 365,      tag: '₹4,999 / year — save 17%', perks: ['Full access for 1 year', 'All features unlocked', 'Best value'] }
 ];
 
 async function api(path, opts = {}) {
@@ -577,7 +584,7 @@ function esc(s) {
 function patientById(id) { return DB.patients.find(p => p.id === id); }
 function testById(id) { return DB.tests.find(t => t.id === id); }
 function reportById(id) { return DB.reports.find(r => r.id === id); }
-function planById(id) { return PLANS.find(p => p.id === id); }
+function planById(id) { return PLANS.find(p => p.id === id) || PLANS[1]; }
 function reportTests(report) {
   return report.tests.map(rt => {
     const t = testById(rt.testId);
@@ -626,6 +633,7 @@ async function syncFromServer() {
   DB.tests = DB.tests || [];
   DB.reports = DB.reports || [];
   DB.invoices = DB.invoices || [];
+  DB.deliveries = DB.deliveries || [];
 }
 async function mutate(fn) {
   try { await fn(); }
@@ -770,7 +778,7 @@ function planCardHTML(plan, u) {
 function renderPaywall() {
   const u = ME;
   document.getElementById('pwMsg').textContent = u && u.subscription && u.subscription.plan === 'trial'
-    ? 'Your 14-day free trial has ended. Choose a plan to continue using Pathofox.'
+    ? 'Your 3-day free trial has ended. Choose a plan to continue using Pathofox.'
     : 'You need an active plan to use Pathofox. Choose a plan to continue.';
   document.getElementById('paywallList').innerHTML = PLANS.filter(p => p.id !== 'trial').map(p => planCardHTML(p, u)).join('');
 }
@@ -1059,6 +1067,16 @@ function viewReport(id) {
   currentReportId = id;
   document.getElementById('viewBody').innerHTML = reportHTML(id);
   document.getElementById('viewDel').style.display = 'inline-flex';
+  const del = DB.deliveries.find(x => x.reportId === id);
+  const inv = DB.invoices.find(i => i.reportId === id);
+  const st = document.getElementById('viewStatus');
+  if (del) {
+    st.innerHTML = '<div class="hint" style="margin:10px 0;padding:8px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">📤 Sent to <b>' + esc(del.mobile) + '</b> via ' + (del.mode === 'real' ? 'real SMS' : 'simulation') + ' — <b>' + esc(del.status) + '</b> on ' + del.created + '</div>';
+  } else if (inv && inv.paid) {
+    st.innerHTML = '<div class="hint" style="margin:10px 0;padding:8px 10px;background:#fefce8;border:1px solid #fde68a;border-radius:8px">Invoice paid — PDF not sent yet. Use <b>Send to Patient</b>.</div>';
+  } else {
+    st.innerHTML = '';
+  }
   openModal('modalView');
 }
 function reportHTML(rp) {
@@ -1143,6 +1161,35 @@ async function deleteReport(id) {
   renderHistory(); renderDashboard(); renderBilling();
   if (document.getElementById('page-report').classList.contains('active')) initReportForm();
 }
+async function downloadReportPdf(rid) {
+  try {
+    const res = await fetch(API_BASE + '/reports/' + rid + '/pdf', { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) {
+      let d = null;
+      try { d = await res.json(); } catch (e) {}
+      alert((d && d.error) || 'Download failed.');
+      return;
+    }
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const rp = reportById(rid);
+    a.download = (rp ? rp.number : 'report') + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } catch (ex) { alert(ex.message); }
+}
+async function sendReportToPatient(rid) {
+  try {
+    const d = await api('/reports/' + rid + '/send', { method: 'POST' });
+    const del = d.delivery;
+    const rp = reportById(rid);
+    alert('Report ' + (rp ? rp.number : rid) + ' → ' + del.mobile + ' (' + del.mode + ': ' + del.status + ')');
+    await syncFromServer();
+    renderBilling(); renderHistory();
+    if (currentReportId === rid) viewReport(rid);
+  } catch (ex) { alert(ex.message); }
+}
 
 /* ============ HISTORY ============ */
 function renderHistory() {
@@ -1164,11 +1211,16 @@ function renderHistory() {
   }
   box.innerHTML = list.map(rp => {
     const pt = patientById(rp.patientId);
+    const del = DB.deliveries.find(x => x.reportId === rp.id);
     return `<div class="rpt-item">
-      <div><div class="who">${pt ? esc(pt.name) : 'Unknown'} <span class="badge blue">${rp.number}</span></div>
+      <div><div class="who">${pt ? esc(pt.name) : 'Unknown'} <span class="badge blue">${rp.number}</span>
+        ${del ? '<span class="badge ' + (del.status === 'sent' ? 'ok' : 'hi') + '">📤 ' + del.status + '</span>' : ''}
+      </div>
       <div class="meta">${rp.date} · ${rp.tests.length} test(s)${rp.notes ? ' · 📝 note' : ''}</div></div>
       <div class="btn-row">
         <button class="btn small" onclick="viewReport('${rp.id}')">View</button>
+        <button class="btn small" onclick="downloadReportPdf('${rp.id}')">⬇ PDF</button>
+        <button class="btn small" onclick="sendReportToPatient('${rp.id}')">📤 Send to Patient</button>
         <button class="btn small primary" onclick="previewReport(false,'${rp.id}')">Print</button>
       </div></div>`;
   }).join('');
@@ -1188,8 +1240,13 @@ async function togglePaid(iid) {
   const inv = DB.invoices.find(i => i.id === iid);
   if (!inv) return;
   if (!confirm(inv.paid ? 'Mark this invoice as unpaid?' : 'Mark this invoice as paid?')) return;
-  try { await api('/invoices/' + iid, { method: 'PATCH', body: { paid: !inv.paid } }); }
-  catch (ex) { alert(ex.message); }
+  try {
+    const d = await api('/invoices/' + iid, { method: 'PATCH', body: { paid: !inv.paid } });
+    if (d.delivery) {
+      const rp = reportById(d.delivery.reportId);
+      alert('Invoice marked paid. Report ' + (rp ? rp.number : '') + ' sent to ' + d.delivery.mobile + ' (' + d.delivery.mode + ': ' + d.delivery.status + ').');
+    }
+  } catch (ex) { alert(ex.message); }
   await syncFromServer();
   renderBilling();
 }
@@ -1232,6 +1289,7 @@ function renderBilling() {
   body.innerHTML = DB.invoices.slice().map(inv => {
     const pt = patientById(inv.patientId);
     const rp = reportById(inv.reportId);
+    const del = DB.deliveries.find(x => x.reportId === inv.reportId);
     return `<tr>
       <td><b>${inv.number}</b></td>
       <td>${pt ? esc(pt.name) : 'Unknown'}</td>
@@ -1240,6 +1298,8 @@ function renderBilling() {
       <td><b>${fmtMoney(inv.total)}</b></td>
       <td><span class="badge ${inv.paid ? 'ok' : 'hi'}">${inv.paid ? 'Paid' : 'Pending'}</span></td>
       <td><div class="btn-row">
+        ${del ? '<span class="badge ' + (del.status === 'sent' ? 'ok' : 'hi') + '">📤 ' + (del.mode === 'real' ? 'SMS ' : 'Sim ') + del.status + '</span>' : ''}
+        ${inv.paid && rp && !del ? '<button class="btn small" onclick="sendReportToPatient(\'' + inv.reportId + '\')">Send PDF</button>' : ''}
         <button class="btn small" onclick="togglePaid('${inv.id}')">${inv.paid ? 'Unmark' : 'Mark Paid'}</button>
         <button class="btn small primary" onclick="printInvoice('${inv.id}')">Print</button>
       </div></td></tr>`;
@@ -1252,6 +1312,8 @@ function openSettings() {
   document.getElementById('setPhone').value = DB.settings.phone || '';
   document.getElementById('setEmail').value = DB.settings.email || '';
   document.getElementById('setAddr').value = DB.settings.address || '';
+  document.getElementById('setSmsKey').value = DB.settings.sms_key || '';
+  document.getElementById('setSmsSender').value = DB.settings.sms_sender || '';
   openModal('modalSettings');
 }
 async function saveSettings() {
@@ -1259,7 +1321,9 @@ async function saveSettings() {
     name: document.getElementById('setName').value.trim(),
     phone: document.getElementById('setPhone').value.trim(),
     email: document.getElementById('setEmail').value.trim(),
-    address: document.getElementById('setAddr').value.trim()
+    address: document.getElementById('setAddr').value.trim(),
+    smsKey: document.getElementById('setSmsKey').value.trim(),
+    smsSender: document.getElementById('setSmsSender').value.trim()
   };
   try { await api('/settings', { method: 'PUT', body: s }); } catch (ex) { alert(ex.message); }
   await syncFromServer();
