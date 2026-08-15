@@ -224,11 +224,81 @@
   /* Printable area */
   #print-area { display: none; }
 
+  /* Mobile top bar (hidden on desktop) */
+  .topbar { display: none; }
+
+  /* ---------- Mobile / responsive ---------- */
+  @media (max-width: 900px) {
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 40;
+      background: linear-gradient(180deg, #0f766e, #0b4f4a);
+      color: #fff; padding: 10px 14px; gap: 10px;
+    }
+    .topbar .brand { padding: 0; }
+    .topbar .brand h1 { font-size: 15px; color: #fff; }
+    .topbar .brand small { display: block; }
+    .topbar .logo { width: 32px; height: 32px; font-size: 15px; }
+    .topbar .logout-btn { width: auto; margin: 0; padding: 7px 12px; }
+
+    .app { flex-direction: column; }
+    .main { padding: 14px 12px calc(84px + env(safe-area-inset-bottom)); max-width: 100%; }
+
+    /* Bottom navigation (replaces sidebar) */
+    .sidebar {
+      position: fixed; bottom: 0; left: 0; right: 0; top: auto; width: 100%; height: auto;
+      flex-direction: column; padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+      z-index: 40; box-shadow: 0 -4px 16px rgba(15,23,42,.18);
+    }
+    .sidebar .brand { display: none; }
+    .sidebar .foot { display: none; }
+    .nav { flex-direction: row; justify-content: flex-start; overflow-x: auto; margin: 0; }
+    .nav button {
+      flex: 1 0 56px; flex-direction: column; gap: 2px; text-align: center;
+      padding: 6px 2px; font-size: 10px; min-height: 44px; justify-content: center;
+    }
+    .nav button .ic { width: auto; font-size: 18px; }
+
+    /* Collapse multi-column grids */
+    .grid2, .grid3, .grid4 { grid-template-columns: 1fr; }
+    .picked-tests { grid-template-columns: 1fr; }
+
+    /* Make tables horizontally scrollable */
+    table { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+
+    /* Stack list items */
+    .rpt-item { flex-direction: column; align-items: stretch; gap: 10px; }
+    .rpt-item .btn-row { justify-content: flex-end; }
+
+    /* Bottom-sheet style modals */
+    .modal-bg { padding: 0; align-items: flex-end; }
+    .modal { max-width: 100%; max-height: 92vh; overflow-y: auto; border-radius: 14px 14px 0 0; }
+    .modal-foot { flex-wrap: wrap; }
+    .modal-foot .btn { flex: 1; justify-content: center; }
+
+    /* Touch-friendly sizing */
+    .search { max-width: 100%; }
+    input, select, textarea { font-size: 16px; }
+    .btn { padding: 10px 14px; }
+    .btn.small { padding: 8px 11px; }
+    .page-head h2 { font-size: 19px; }
+    .stat .v { font-size: 22px; }
+
+    /* Auth / paywall */
+    #paywallScreen { padding: 24px 12px; }
+    .pw-plans { grid-template-columns: 1fr; }
+    .pw-head h2 { font-size: 20px; }
+  }
+
   @media print {
     body { background: #fff; }
     body * { visibility: hidden; }
     #print-area, #print-area * { visibility: visible; }
     #print-area { display: block; position: absolute; top: 0; left: 0; width: 100%; }
+    #print-area table { display: table; overflow: visible; white-space: normal; }
+    #print-area .grid2 { grid-template-columns: 1fr 1fr; }
+    #print-area .grid3 { grid-template-columns: repeat(3, 1fr); }
+    #print-area .grid4 { grid-template-columns: repeat(4, 1fr); }
   }
 </style>
 </head>
@@ -286,6 +356,13 @@
 </div>
 
 <div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">+</div>
+      <h1 id="mLabName">Pathofox<small id="mTagline">Diagnostic Laboratory</small></h1>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+  </header>
   <aside class="sidebar">
     <div class="brand">
       <div class="logo">+</div>
@@ -1331,7 +1408,9 @@ async function saveSettings() {
   closeModal('modalSettings');
 }
 function saveSettingsUI() {
-  document.getElementById('labNameShort').textContent = (DB.settings.name || 'Lab').split(' ')[0];
+  const first = (DB.settings.name || 'Lab').split(' ')[0];
+  document.getElementById('labNameShort').textContent = first;
+  document.getElementById('mLabName').firstChild.textContent = first + ' ';
   document.getElementById('authName').textContent = DB.settings.name || 'Pathofox';
 }
 
